@@ -5,80 +5,56 @@ import QuestionList from "./QuestionList";
 
 function App() {
   const [page, setPage] = useState("List");
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuizes] = useState([])
 
-  // Fetch questions when component mounts
   useEffect(() => {
-    fetch("http://localhost:4000/questions")
-      .then((response) => response.json())
-      .then((data) => setQuestions(data))
-      .catch((error) => console.error("Error fetching questions:", error));
+    fetch(`http://localhost:4000/questions`)
+    .then((res) => res.json())
+    .then((questions) => setQuizes(questions))
   }, []);
+  function handleAddNewQuiz(quiz) {
+    setQuizes([...questions, quiz])
+  }
 
-  // Add new question
-  const handleAddQuestion = (formData) => {
-    const newQuestion = {
-      prompt: formData.prompt,
-      answers: [formData.answer1, formData.answer2, formData.answer3, formData.answer4],
-      correctIndex: parseInt(formData.correctIndex),
-    };
-
-    fetch("http://localhost:4000/questions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(newQuestion),
+  function handleQuizDelete(quiz) {
+    fetch(`http://localhost:4000/questions/${quiz.id}`, {
+      method: "DELETE"
     })
-      .then((response) => response.json())
-      .then((data) => {
-        setQuestions([...questions, data]);
-        setPage("List"); // Navigate back to list after adding
-      })
-      .catch((error) => console.error("Error adding question:", error));
-  };
-
-  // Delete question
-  const handleDeleteQuestion = (id) => {
-    fetch(`http://localhost:4000/questions/${id}`, {
-      method: "DELETE",
+    .then((res) => res.json())
+    .then(() => {
+      const updatedList = questions.filter((question) => question.id !== quiz.id)
+      setQuizes(updatedList)
     })
-      .then(() => {
-        setQuestions(questions.filter((question) => question.id !== id));
-      })
-      .catch((error) => console.error("Error deleting question:", error));
-  };
+  }
 
-  // Update question answer
-  const handleUpdateAnswer = (id, correctIndex) => {
-    fetch(`http://localhost:4000/questions/${id}`, {
+  function handleQuizUpdate(quiz, index) {
+    fetch(`http://localhost:4000/questions/${quiz.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ correctIndex: parseInt(correctIndex) }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setQuestions(questions.map((question) =>
-          question.id === id ? { ...question, correctIndex: parseInt(correctIndex) } : question
-        ));
+      body: JSON.stringify({
+        ...quiz,
+        correctIndex: Number(index),
       })
-      .catch((error) => console.error("Error updating question:", error));
-  };
+    })
+    .then((res) => res.json())
+    .then((updatedQuiz) => {
+      const updatedList = questions.map((question) => {
+        if(question.id === updatedQuiz.id) {
+          return updatedQuiz
+        } else {
+          return question
+        }
+      });
+      setQuizes(updatedList)
+    })
+  }
 
   return (
     <main>
       <AdminNavBar onChangePage={setPage} />
-      {page === "Form" ? (
-        <QuestionForm onAddQuestion={handleAddQuestion} />
-      ) : (
-        <QuestionList
-          questions={questions}
-          onDeleteQuestion={handleDeleteQuestion}
-          onUpdateAnswer={handleUpdateAnswer}
-        />
-      )}
+      {page === "Form" ? <QuestionForm onAddNewQuiz={handleAddNewQuiz} /> : <QuestionList questions={questions} onDeleteQuiz={handleQuizDelete} onUpdateQuiz={handleQuizUpdate}/>}
     </main>
   );
 }
